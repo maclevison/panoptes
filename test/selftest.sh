@@ -140,11 +140,11 @@ out=$(MOCK_CMD_MODE=claude_subtype "$PANOPTES" --diff "$FIXTURE" --llm-cmd "$llm
 [ "$(printf '%s' "$out" | jq -r '.reviewed')" = "false" ] || fail "claude_subtype: error subtype reported as a review: $out"
 out=$(MOCK_CMD_MODE=nonstring "$PANOPTES" --diff "$FIXTURE" --llm-cmd "$llm_cmd_mock" --format json)
 [ "$(printf '%s' "$out" | jq -r '.reviewed')" = "false" ] || fail "nonstring: non-string field reported as a review: $out"
-for mode in untyped_error bare_result status_false json_array; do
+for mode in untyped_error bare_result status_false status_null json_array json_scalar whitespace; do
   out=$(MOCK_CMD_MODE=$mode "$PANOPTES" --diff "$FIXTURE" --llm-cmd "$llm_cmd_mock" --format json)
   [ "$(printf '%s' "$out" | jq -r '.reviewed')" = "false" ] || fail "$mode: reported as a review: $out"
 done
-echo "PASS  --llm-cmd claude envelope fails closed (is_error, error subtype, untyped, non-string, falsey status, non-object)"
+echo "PASS  --llm-cmd claude envelope fails closed (is_error, error subtype, untyped, non-string, falsey status, non-object, blank)"
 
 # Test 4e — a command that fails must carry its own stdout into the error, so
 # the diagnosis does not require re-running it by hand.

@@ -17,6 +17,9 @@
 #   bare_result     {"result": ...} alone — not a claude success envelope
 #   status_false    status:false plus a .response (jq // would skip it)
 #   json_array      an array wrapping an error object
+#   status_null     status:null plus a .response
+#   json_scalar     a bare JSON number
+#   whitespace      whitespace-only stdout
 #   nonstring       envelope whose .response is an object, not text
 #   envelope_bare   valid JSON with no .response/.content/.text field, exit 0
 #   fail_stdout     diagnostics on stdout, exit 1 (the bytes worth logging)
@@ -59,6 +62,15 @@ J
     ;;
   json_array)
     printf '%s\n' '[{"is_error":true,"result":"failure"}]'
+    ;;
+  status_null)
+    printf '%s\n' '{"status":null,"response":"looks like a review"}'
+    ;;
+  json_scalar)
+    printf '%s\n' '42'
+    ;;
+  whitespace)
+    printf '  \n\t\n'
     ;;
   nonstring)
     printf '%s\n' '{"status":"SUCCESS","response":{"oops":"not text"}}'

@@ -123,17 +123,16 @@ TRANSPORT (default: HTTP against an OpenAI-compatible endpoint):
                              $OPENROUTER_API_KEY.
   --llm-cmd "CMD"            Instead of curl, run CMD via `sh -c`, piping the
                              system prompt + diff to its stdin and reading the
-                             review from its stdout. Non-JSON stdout is taken
-                             as the review verbatim. JSON stdout must be one
-                             object and is treated as an agent envelope: a `status` field that is not
-                             SUCCESS is a transport failure (its `error` is
-                             reported), otherwise the review is read from
-                             the first non-empty string among `.response`,
-                             `.content`, `.text`, `.result` (a claude
-                             `type:"result"` envelope must also be
-                             subtype=success, is_error=false) — JSON
-                             carrying none of those is a failure, never a
-                             review.
+                             review from its stdout. Non-JSON stdout is the
+                             review verbatim. JSON stdout must be one object
+                             (an agent envelope): a `status` other than
+                             SUCCESS is a failure (its `error` is reported);
+                             an envelope with `type:"result"`, `is_error` or
+                             `subtype` must be subtype=success and
+                             is_error=false. The review is the first
+                             non-empty string among `.response`, `.content`,
+                             `.text`, `.result` (the last only from such a
+                             success envelope); none of those is a failure.
 
 FALLBACK (tried once, only after the primary transport fails):
   --fallback-base-url URL
@@ -754,7 +753,7 @@ cmd_call() {
     fi
     return 1
   fi
-  if [ -z "$output" ]; then
+  if [ -z "${output//[[:space:]]/}" ]; then
     CMD_FAIL_CATEGORY="empty"
     CMD_FAIL_REASON="empty stdout"
     return 1
@@ -794,7 +793,11 @@ cmd_call() {
   # any one of the three markers is enough to apply the check.
   if printf '%s' "$output" | jq -e '(.type == "result" or has("is_error") or has("subtype")) and (.subtype != "success" or .is_error != false)' >/dev/null 2>&1; then
     CMD_FAIL_CATEGORY="envelope_error"
-    CMD_FAIL_REASON="command reported $(printf '%s' "$output" | jq -r '"subtype=\(if has("subtype") then .subtype | tostring else "missing" end) is_error=\(if has("is_error") then .is_error | tostring else "missing" end): \(if (.result | type) == "string" then .result else "no result text" end)"' 2>/dev/null)"
+    local subtype is_error result
+    subtype="$(printf '%s' "$output" | jq -r 'if has("subtype") then .subtype | tostring else "missing" end')"
+    is_error="$(printf '%s' "$output" | jq -r 'if has("is_error") then .is_error | tostring else "missing" end')"
+    result="$(printf '%s' "$output" | jq -r 'if (.result | type) == "string" then .result else "no result text" end')"
+    CMD_FAIL_REASON="command reported subtype=${subtype} is_error=${is_error}: $(cmd_output_tail "$result")"
     return 1
   fi
   # Only a non-empty string is a review: `jq -r` would happily serialize an

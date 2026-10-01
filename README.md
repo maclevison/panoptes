@@ -286,9 +286,11 @@ guidelines.md`) are read from the working tree; `REVIEW.md` is read from
 `sh -c` and reads the review back from its stdout, instead of calling an
 OpenAI-compatible HTTP endpoint. Works with any local agent runner that can
 consume a prompt on stdin. Non-JSON stdout is the review verbatim; JSON
-stdout is an agent envelope — the review is read from
-`.response`/`.content`/`.text`/`.result`, and `status` other than SUCCESS or
-`is_error: true` is a failure.
+stdout must be a single object (an agent envelope): a `status` other than
+SUCCESS is a failure, and an envelope carrying `type:"result"`, `is_error` or
+`subtype` must be `subtype:"success"` with `is_error:false`. The review is the
+first non-empty string among `.response`/`.content`/`.text`, or `.result` from
+such a success envelope; anything else is a failure, never a review.
 
 **Use your Claude subscription (local only):**
 
