@@ -285,8 +285,30 @@ guidelines.md`) are read from the working tree; `REVIEW.md` is read from
 `--llm-cmd` pipes the system prompt and diff to the command's stdin over
 `sh -c` and reads the review back from its stdout, instead of calling an
 OpenAI-compatible HTTP endpoint. Works with any local agent runner that can
-consume a prompt on stdin — if its stdout is JSON, panoptes tries
-`.response`/`.content`/`.text` before falling back to the raw text.
+consume a prompt on stdin. Non-JSON stdout is the review verbatim; JSON
+stdout must be a single object (an agent envelope): a `status` other than
+SUCCESS is a failure, and an envelope carrying `type:"result"`, `is_error` or
+`subtype` must be `subtype:"success"` with `is_error:false`. The review is the
+first non-empty string among `.response`/`.content`/`.text`, or `.result` from
+such a success envelope; anything else is a failure, never a review.
+
+**Use your Claude subscription (local only):**
+
+```bash
+./panoptes --base main --llm-cmd 'env -u ANTHROPIC_API_KEY -u ANTHROPIC_AUTH_TOKEN \
+  -u CLAUDE_CODE_USE_BEDROCK -u CLAUDE_CODE_USE_VERTEX -u CLAUDE_CODE_USE_FOUNDRY \
+  claude -p --model sonnet --output-format json \
+  --tools "" --strict-mcp-config --setting-sources ""'
+```
+
+The `env -u` list keeps an API key, auth token or cloud-provider selector in
+your shell from taking precedence over the subscription login
+(`CLAUDE_CODE_OAUTH_TOKEN` from `claude setup-token` is subscription auth and
+can stay). The extra flags keep your own
+CLAUDE.md, hooks, MCP servers and tools out of the review (and out of your
+quota). This draws on your personal plan's usage limits — keep CI on an API
+key. `--max-tokens`, `--reasoning-effort` and `--zdr` apply to the HTTP
+transport only.
 
 ### Fallback chain
 

@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **`--llm-cmd` understands `claude -p --output-format json`.** The review is
+  read from `.result`, and a `type:"result"` envelope that is not
+  `subtype:"success"` with `is_error:false` is a transport failure — so a
+  local review can run on a Claude subscription without a quota or auth error
+  being posted as a clean review. README shows the recommended invocation.
+- **`--llm-cmd` envelope checks fail closed on two more shapes:** a falsey
+  `status` (`false`, `null`, `""`) is no longer read as "no status field",
+  and JSON stdout that is not a single object (an array, a scalar) is a
+  failure instead of being posted verbatim as the review.
 - **Standalone local CLI: `bin/panoptes`.** The review engine previously
   embedded as a ~430-line `run:` step in `.github/workflows/review.yml` is now
   a dependency-free executable (`bash`, `git`, `jq`, `curl`, and `gh` for
@@ -18,7 +27,8 @@
     agent CLI instead. `--llm-cmd` reads non-JSON stdout as the review
     verbatim; JSON stdout is treated as an agent envelope, where a `status`
     other than SUCCESS is a transport failure (reporting the envelope's
-    `error`) and the review is read from `.response // .content // .text`.
+    `error`) and the review is the first non-empty string among `.response`,
+    `.content`, `.text` and `.result`.
     JSON carrying none of those is a failure too — never a review, so an
     agent that reports its own breakage in-band (`agy --output-format json`
     answers `{"status":"ERROR","response":null}` and still exits 0) can't

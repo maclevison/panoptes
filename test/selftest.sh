@@ -126,6 +126,26 @@ reviewed=$(printf '%s' "$out" | jq -r '.reviewed')
 [ "$reviewed" = "false" ] || fail "envelope_bare: bare JSON reported as a review: $out"
 echo "PASS  --llm-cmd JSON with no review field is a failure"
 
+# Test 4d2 — `claude -p --output-format json`: review in .result is unwrapped;
+# is_error=true (quota/auth, exit 0) is a failure, not a clean review.
+out=$(MOCK_CMD_MODE=claude_ok "$PANOPTES" --diff "$FIXTURE" --llm-cmd "$llm_cmd_mock" --format json)
+[ "$(printf '%s' "$out" | jq -r '.reviewed')" = "true" ] || fail "claude_ok: expected reviewed=true, got: $out"
+printf '%s' "$out" | jq -r '.review' | grep -q "canned review" \
+  || fail "claude_ok: expected .result unwrapped, got: $out"
+out=$(MOCK_CMD_MODE=claude_error "$PANOPTES" --diff "$FIXTURE" --llm-cmd "$llm_cmd_mock" --format json)
+[ "$(printf '%s' "$out" | jq -r '.reviewed')" = "false" ] || fail "claude_error: is_error reported as a review: $out"
+printf '%s' "$out" | jq -r '.failure.primary_error' | grep -q "usage limit" \
+  || fail "claude_error: .result missing from failure, got: $out"
+out=$(MOCK_CMD_MODE=claude_subtype "$PANOPTES" --diff "$FIXTURE" --llm-cmd "$llm_cmd_mock" --format json)
+[ "$(printf '%s' "$out" | jq -r '.reviewed')" = "false" ] || fail "claude_subtype: error subtype reported as a review: $out"
+out=$(MOCK_CMD_MODE=nonstring "$PANOPTES" --diff "$FIXTURE" --llm-cmd "$llm_cmd_mock" --format json)
+[ "$(printf '%s' "$out" | jq -r '.reviewed')" = "false" ] || fail "nonstring: non-string field reported as a review: $out"
+for mode in untyped_error bare_result status_false status_null json_array json_scalar json_stream whitespace blank_response; do
+  out=$(MOCK_CMD_MODE=$mode "$PANOPTES" --diff "$FIXTURE" --llm-cmd "$llm_cmd_mock" --format json)
+  [ "$(printf '%s' "$out" | jq -r '.reviewed')" = "false" ] || fail "$mode: reported as a review: $out"
+done
+echo "PASS  --llm-cmd claude envelope fails closed (is_error, error subtype, untyped, non-string, falsey status, non-object, blank)"
+
 # Test 4e — a command that fails must carry its own stdout into the error, so
 # the diagnosis does not require re-running it by hand.
 out=$(MOCK_CMD_MODE=fail_stdout "$PANOPTES" --diff "$FIXTURE" --llm-cmd "$llm_cmd_mock" --format json)
