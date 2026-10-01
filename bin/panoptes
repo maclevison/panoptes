@@ -15,7 +15,7 @@
 set -euo pipefail
 
 # Bumped with each release tag (see README → Versioning).
-PANOPTES_VERSION="2.15.0"
+PANOPTES_VERSION="2.15.1"
 
 # ---------------------------------------------------------------------------
 # Defaults
@@ -198,7 +198,11 @@ self_update() {
     usage_error "--self-update: $self is inside a git checkout; update it with git"
   fi
   tmp="$(mktemp "$dir/.panoptes.XXXXXX")" || usage_error "--self-update: cannot write to $dir"
-  if ! curl -fsSL "$url" -o "$tmp" || ! bash -n "$tmp" || ! new="$(bash "$tmp" --version)"; then
+  # The payload must answer --version with a real version line: an empty file
+  # or any script that merely exits 0 would otherwise replace the install.
+  if ! curl -fsSL "$url" -o "$tmp" || ! bash -n "$tmp" \
+    || ! new="$(bash "$tmp" --version 2>/dev/null)" \
+    || ! [[ "$new" =~ ^panoptes\ [0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     rm -f "$tmp"
     log "panoptes: --self-update failed to fetch a valid script from $url"
     exit 1
@@ -208,8 +212,13 @@ self_update() {
     log "panoptes ${PANOPTES_VERSION} is already up to date."
     exit 0
   fi
-  chmod +x "$tmp"
-  mv -f "$tmp" "$self"
+  # mktemp creates 0600; keep the installed file's mode (GNU stat, then BSD).
+  if ! chmod "$(stat -c %a "$self" 2>/dev/null || stat -f %Lp "$self" 2>/dev/null)" "$tmp" 2>/dev/null \
+    || ! mv -f "$tmp" "$self"; then
+    rm -f "$tmp"
+    log "panoptes: --self-update could not replace $self"
+    exit 1
+  fi
   log "panoptes ${PANOPTES_VERSION} -> ${new#panoptes }"
   exit 0
 }

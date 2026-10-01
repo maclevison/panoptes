@@ -257,7 +257,7 @@ there is no drift between the local and CI behavior. Requires `bash`, `git`,
 
 ```bash
 # Install the latest v2 release as a standalone copy on your PATH...
-curl -fsSL https://raw.githubusercontent.com/maclevison/panoptes/v2/bin/panoptes \
+mkdir -p ~/.local/bin && curl -fsSL https://raw.githubusercontent.com/maclevison/panoptes/v2/bin/panoptes \
   -o ~/.local/bin/panoptes && chmod +x ~/.local/bin/panoptes
 
 # ...then keep it current:
