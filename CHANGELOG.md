@@ -1,5 +1,14 @@
 # Changelog
 
+## v2.15.1 — 2026-10-01
+
+- **`--self-update` rejects a payload that is not panoptes.** An empty file
+  (or any script that exits 0) passed `bash -n` and `--version` and replaced
+  the install; the new script must now print `panoptes X.Y.Z`.
+- **`--self-update` keeps the installed file's mode** instead of the `0600`
+  that `mktemp` creates.
+- README install snippet creates `~/.local/bin` first.
+
 ## v2.15.0 — 2026-10-01
 
 - **`panoptes --version` and `panoptes --self-update`.** A standalone install

@@ -278,12 +278,29 @@ PANOPTES_UPDATE_URL="file://$UPD_DIR/new" "$UPD_DIR/panoptes" --self-update 2>/d
   || { rm -rf "$UPD_DIR"; fail "self-update: copy was not replaced"; }
 PANOPTES_UPDATE_URL="file://$UPD_DIR/new" "$UPD_DIR/panoptes" --self-update 2>&1 | grep -q "already up to date" \
   || { rm -rf "$UPD_DIR"; fail "self-update: second run should be a no-op"; }
+# Mode is preserved across the swap (mktemp would leave 0600).
+chmod 755 "$UPD_DIR/panoptes"
+sed 's/^PANOPTES_VERSION=.*/PANOPTES_VERSION="9.9.10"/' "$PANOPTES" > "$UPD_DIR/newer"
+PANOPTES_UPDATE_URL="file://$UPD_DIR/newer" "$UPD_DIR/panoptes" --self-update 2>/dev/null
+mode=$(stat -c %a "$UPD_DIR/panoptes" 2>/dev/null || stat -f %Lp "$UPD_DIR/panoptes")
+[ "$mode" = "755" ] || { rm -rf "$UPD_DIR"; fail "self-update: mode not preserved, got $mode"; }
+# An empty payload (passes bash -n, exits 0, prints nothing) must be refused
+# and leave the install untouched.
+: > "$UPD_DIR/empty"
+set +e
+PANOPTES_UPDATE_URL="file://$UPD_DIR/empty" "$UPD_DIR/panoptes" --self-update 2>/dev/null
+code=$?
+set -e
+[ "$code" -eq 1 ] || { rm -rf "$UPD_DIR"; fail "self-update: empty payload should exit 1, got $code"; }
+[ "$("$UPD_DIR/panoptes" --version)" = "panoptes 9.9.10" ] \
+  || { rm -rf "$UPD_DIR"; fail "self-update: empty payload replaced the install"; }
+ls -a "$UPD_DIR" | grep -q '^\.panoptes\.' && { rm -rf "$UPD_DIR"; fail "self-update: temp file left behind"; }
 rm -rf "$UPD_DIR"
 set +e
 PANOPTES_UPDATE_URL="file:///nonexistent" "$PANOPTES" --self-update >/dev/null 2>&1
 code=$?
 set -e
 [ "$code" -eq 2 ] || fail "self-update: expected refusal (exit 2) inside a git checkout, got $code"
-echo "PASS  --self-update replaces an install, no-ops when current, refuses a checkout"
+echo "PASS  --self-update replaces an install, keeps its mode, no-ops when current, rejects an empty payload, refuses a checkout"
 
 echo "ALL SELFTESTS PASSED"
