@@ -113,7 +113,7 @@ If Panoptes didn't exist, you'd reach for one of these. Here's the honest trade-
 - **Opt-in severity gating** — the review stays advisory, but exposes `reviewed` / `important` / `nit` / `pre_existing` as **workflow outputs** so a downstream job can choose to block. A human-readable tally also lands in the job summary (see [§4](#4-optional-opt-in-to-severity-gating)).
 - **Built-in run controls** — drafts skipped, superseded runs cancelled on new pushes, diffs over `max_diff_lines` (default 5000) skipped with an explanatory comment.
 - **Per-PR usage, mapped by OpenRouter** — the token usage OpenRouter reports for each run is written to the GitHub Actions **job summary**, so every review is accountable.
-- **Any model, one line** — swap `moonshotai/kimi-k2.7-code-20260612` for any OpenRouter id, or any OpenAI-compatible endpoint, without touching the workflow.
+- **Any model, one line** — swap `openai/gpt-5-mini` for any OpenRouter id, or any OpenAI-compatible endpoint, without touching the workflow.
 - **Least-privilege** — `contents: read`, `pull-requests: write`. Only the diff is sent, never the whole repo.
 - **Tunable reviewer voice** — set the comment heading (`bot_name`), toggle the model footer, cap `max_tokens` and `reasoning_effort` for thinking models.
 
@@ -314,7 +314,7 @@ transport only.
 
 ```bash
 ./panoptes --base main \
-  --model moonshotai/kimi-k2.7-code-20260612 \
+  --model openai/gpt-5-mini \
   --fallback-model deepseek/deepseek-v4-flash-20260423
 ```
 
@@ -352,7 +352,7 @@ Run `./panoptes --help` for the full flag reference.
 
 | Input | Type | Default | Description |
 |---|---|---|---|
-| `model` | string | `moonshotai/kimi-k2.7-code-20260612` | Any OpenRouter model id (e.g. `deepseek/deepseek-v4-flash-20260423`, `z-ai/glm-5.2`, `google/gemini-3.5-flash`) |
+| `model` | string | `openai/gpt-5-mini` | Any OpenRouter model id (e.g. `deepseek/deepseek-v4-flash-20260423`, `z-ai/glm-5.2`, `google/gemini-3.5-flash`) |
 | `base_url` | string | `https://openrouter.ai/api/v1` | OpenAI-compatible base URL; point it at another provider if you prefer |
 | `extra_instructions` | string | `""` | Extra review instructions appended to the system prompt (e.g. project-specific rules) |
 | `max_diff_lines` | number | `5000` | Skip the review when the PR diff exceeds this many lines |

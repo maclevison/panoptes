@@ -18,7 +18,7 @@ set -euo pipefail
 # Defaults
 # ---------------------------------------------------------------------------
 DEFAULT_BASE_URL="https://openrouter.ai/api/v1"
-DEFAULT_MODEL="moonshotai/kimi-k2.7-code-20260612"
+DEFAULT_MODEL="openai/gpt-5-mini"
 DEFAULT_GUIDELINES_PATH=".github/code-review-guidelines.md"
 DEFAULT_MAX_DIFF_LINES=5000
 DEFAULT_BOT_NAME="👁 Panoptes"
@@ -118,7 +118,7 @@ DIFF SOURCE (exactly one required):
 
 TRANSPORT (default: HTTP against an OpenAI-compatible endpoint):
   --base-url URL            OpenAI-compatible base URL. Default: openrouter.ai.
-  --model ID                 Model id. Default: moonshotai/kimi-k2.7-code-20260612.
+  --model ID                 Model id. Default: openai/gpt-5-mini.
                              Bearer key: $PANOPTES_API_KEY, falling back to
                              $OPENROUTER_API_KEY.
   --llm-cmd "CMD"            Instead of curl, run CMD via `sh -c`, piping the
