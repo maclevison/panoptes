@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v2.14.0 — 2026-10-01
 
 - **Default model: `moonshotai/kimi-k2.7-code` → `openai/gpt-5-mini`.** Kimi
   reasons without bound even at `reasoning_effort: low`: it used 11k of the
@@ -68,6 +68,17 @@
   parse/guard logic that had to be hand-kept in sync with `review.yml`. Added
   coverage for the `--llm-cmd` transport, the fallback chain, and the
   fail-safe/`--strict` exit-code contract.
+
+## v2.13.0 — 2026-07-10
+
+- **Fix `E2BIG` on large diffs (curl side).** The request body is sent with
+  `--data-binary @file` instead of an argument, so a big diff no longer
+  overflows the per-argument limit. (#14)
+
+## v2.12.0 — 2026-07-10
+
+- **Fix `E2BIG` on large diffs (jq side).** The diff and system prompt are
+  passed to jq via `--rawfile`, not `--arg`. (#13)
 
 ## v2.11.2 — 2026-07-03
 
