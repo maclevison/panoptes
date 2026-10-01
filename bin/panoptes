@@ -800,15 +800,15 @@ cmd_call() {
     CMD_FAIL_REASON="command reported subtype=${subtype} is_error=${is_error}: $(cmd_output_tail "$result")"
     return 1
   fi
-  # Only a non-empty string is a review: `jq -r` would happily serialize an
+  # Only a string with non-blank text is a review: `jq -r` would happily serialize an
   # object or array in one of these fields into "review" text. .result counts
   # only inside a claude success envelope (the gate above vouched for it).
-  extracted="$(printf '%s' "$output" | jq -r 'first(.response, .content, .text, (select(.subtype == "success" and .is_error == false) | .result) | select(type == "string" and length > 0)) // empty' 2>/dev/null)" || extracted=""
+  extracted="$(printf '%s' "$output" | jq -r 'first(.response, .content, .text, (select(.subtype == "success" and .is_error == false) | .result) | select(type == "string" and test("\\S"))) // empty' 2>/dev/null)" || extracted=""
   if [ -z "$extracted" ]; then
     # Valid JSON, no field we recognize as the review. Falling back to the raw
     # envelope here is what let an error blob through as `reviewed: true`.
     CMD_FAIL_CATEGORY="envelope_unknown"
-    CMD_FAIL_REASON="JSON output with no non-empty string .response/.content/.text/.result field: $(cmd_output_tail "$output")"
+    CMD_FAIL_REASON="JSON output with no non-blank string .response/.content/.text/.result field: $(cmd_output_tail "$output")"
     return 1
   fi
   LAST_REVIEW="$extracted"

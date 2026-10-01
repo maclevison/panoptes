@@ -20,6 +20,8 @@
 #   status_null     status:null plus a .response
 #   json_scalar     a bare JSON number
 #   whitespace      whitespace-only stdout
+#   blank_response  SUCCESS envelope whose .response is only whitespace
+#   json_stream     two JSON objects back to back (NDJSON)
 #   nonstring       envelope whose .response is an object, not text
 #   envelope_bare   valid JSON with no .response/.content/.text field, exit 0
 #   fail_stdout     diagnostics on stdout, exit 1 (the bytes worth logging)
@@ -71,6 +73,12 @@ J
     ;;
   whitespace)
     printf '  \n\t\n'
+    ;;
+  blank_response)
+    printf '%s\n' '{"status":"SUCCESS","response":"\n  "}'
+    ;;
+  json_stream)
+    printf '%s\n' '{"status":"SUCCESS","response":"one"}' '{"status":"SUCCESS","response":"two"}'
     ;;
   nonstring)
     printf '%s\n' '{"status":"SUCCESS","response":{"oops":"not text"}}'

@@ -140,7 +140,7 @@ out=$(MOCK_CMD_MODE=claude_subtype "$PANOPTES" --diff "$FIXTURE" --llm-cmd "$llm
 [ "$(printf '%s' "$out" | jq -r '.reviewed')" = "false" ] || fail "claude_subtype: error subtype reported as a review: $out"
 out=$(MOCK_CMD_MODE=nonstring "$PANOPTES" --diff "$FIXTURE" --llm-cmd "$llm_cmd_mock" --format json)
 [ "$(printf '%s' "$out" | jq -r '.reviewed')" = "false" ] || fail "nonstring: non-string field reported as a review: $out"
-for mode in untyped_error bare_result status_false status_null json_array json_scalar whitespace; do
+for mode in untyped_error bare_result status_false status_null json_array json_scalar json_stream whitespace blank_response; do
   out=$(MOCK_CMD_MODE=$mode "$PANOPTES" --diff "$FIXTURE" --llm-cmd "$llm_cmd_mock" --format json)
   [ "$(printf '%s' "$out" | jq -r '.reviewed')" = "false" ] || fail "$mode: reported as a review: $out"
 done
