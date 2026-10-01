@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Default model: `moonshotai/kimi-k2.7-code` → `openai/gpt-5-mini`.** Kimi
+  reasons without bound even at `reasoning_effort: low`: it used 11k of the
+  16k completion budget on a 237-line diff, then returned empty content
+  (`finish_reason=length`) on 265- and 273-line diffs. On a 455-line diff it
+  exhausted 32k. GPT-5 Mini reviewed the same diffs in ~1.1k completion
+  tokens at ~1/25 the cost, with comparable findings. To keep Kimi, pin it
+  in the calling workflow's `with:` block:
+  `model: moonshotai/kimi-k2.7-code-20260612` (and raise `max_tokens`).
 - **`--llm-cmd` understands `claude -p --output-format json`.** The review is
   read from `.result`, and a `type:"result"` envelope that is not
   `subtype:"success"` with `is_error:false` is a transport failure — so a
