@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- **`panoptes --version` and `panoptes --self-update`.** A standalone install
+  (a copy on your PATH, not a clone) can now update itself to the latest `v2`
+  release: the new script is downloaded next to the old one, checked with
+  `bash -n` and `--version`, then moved into place atomically. It refuses to
+  overwrite a symlink or a file inside a git checkout, which git should update
+  instead. README's install snippet now installs from the `v2` tag.
+
 ## v2.14.0 — 2026-10-01
 
 - **Default model: `moonshotai/kimi-k2.7-code` → `openai/gpt-5-mini`.** Kimi
