@@ -213,8 +213,12 @@ self_update() {
     exit 0
   fi
   # mktemp creates 0600; keep the installed file's mode (GNU stat, then BSD).
-  chmod "$(stat -c %a "$self" 2>/dev/null || stat -f %Lp "$self")" "$tmp"
-  mv -f "$tmp" "$self"
+  if ! chmod "$(stat -c %a "$self" 2>/dev/null || stat -f %Lp "$self" 2>/dev/null)" "$tmp" 2>/dev/null \
+    || ! mv -f "$tmp" "$self"; then
+    rm -f "$tmp"
+    log "panoptes: --self-update could not replace $self"
+    exit 1
+  fi
   log "panoptes ${PANOPTES_VERSION} -> ${new#panoptes }"
   exit 0
 }
