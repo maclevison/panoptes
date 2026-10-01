@@ -14,6 +14,9 @@
 # Run `panoptes --help` for the full flag reference.
 set -euo pipefail
 
+# Bumped with each release tag (see README → Versioning).
+PANOPTES_VERSION="2.15.0"
+
 # ---------------------------------------------------------------------------
 # Defaults
 # ---------------------------------------------------------------------------
@@ -166,6 +169,11 @@ OUTPUT:
   --zdr                        Add provider.data_collection=deny (OpenRouter
                              zero-data-retention routing).
 
+  --version                   Print the version and exit.
+  --self-update               Replace this installed copy with the latest
+                             v2 release from GitHub. Refuses to touch a
+                             symlink or a file inside a git checkout (update
+                             those with git).
   -h, --help                  Show this help and exit.
 
 EXIT STATUS:
@@ -173,6 +181,37 @@ EXIT STATUS:
   1   with --strict, when both transports fail.
   2   on invocation errors (bad flags, missing diff source).
 EOF
+}
+
+# Downloads the script into the same directory (so the final mv is atomic),
+# checks it parses and runs, then swaps it in. PANOPTES_UPDATE_URL overrides
+# the source (used by the selftest).
+self_update() {
+  local self dir url tmp new
+  self="${BASH_SOURCE[0]}"
+  dir="$(cd "$(dirname "$self")" && pwd)"
+  url="${PANOPTES_UPDATE_URL:-https://raw.githubusercontent.com/maclevison/panoptes/v2/bin/panoptes}"
+  if [ -L "$self" ]; then
+    usage_error "--self-update: $self is a symlink; update the checkout it points to with git"
+  fi
+  if git -C "$dir" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    usage_error "--self-update: $self is inside a git checkout; update it with git"
+  fi
+  tmp="$(mktemp "$dir/.panoptes.XXXXXX")" || usage_error "--self-update: cannot write to $dir"
+  if ! curl -fsSL "$url" -o "$tmp" || ! bash -n "$tmp" || ! new="$(bash "$tmp" --version)"; then
+    rm -f "$tmp"
+    log "panoptes: --self-update failed to fetch a valid script from $url"
+    exit 1
+  fi
+  if cmp -s "$tmp" "$self"; then
+    rm -f "$tmp"
+    log "panoptes ${PANOPTES_VERSION} is already up to date."
+    exit 0
+  fi
+  chmod +x "$tmp"
+  mv -f "$tmp" "$self"
+  log "panoptes ${PANOPTES_VERSION} -> ${new#panoptes }"
+  exit 0
 }
 
 usage_error() {
@@ -334,6 +373,13 @@ while [ "$#" -gt 0 ]; do
     -h|--help)
       print_help
       exit 0
+      ;;
+    --version)
+      printf 'panoptes %s\n' "$PANOPTES_VERSION"
+      exit 0
+      ;;
+    --self-update)
+      self_update
       ;;
     *)
       usage_error "unknown argument: $1"

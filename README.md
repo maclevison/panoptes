@@ -256,12 +256,20 @@ there is no drift between the local and CI behavior. Requires `bash`, `git`,
 ### Install
 
 ```bash
-# Grab just the script...
-curl -fsSL https://raw.githubusercontent.com/OWNER/panoptes/main/bin/panoptes -o panoptes
-chmod +x panoptes
+# Install the latest v2 release as a standalone copy on your PATH...
+curl -fsSL https://raw.githubusercontent.com/maclevison/panoptes/v2/bin/panoptes \
+  -o ~/.local/bin/panoptes && chmod +x ~/.local/bin/panoptes
 
-# ...or clone the repo and use bin/panoptes directly.
+# ...then keep it current:
+panoptes --version
+panoptes --self-update
+
+# Or clone the repo and use bin/panoptes directly (update with git).
 ```
+
+`--self-update` downloads the latest `v2` release, checks it parses and runs,
+and swaps it in atomically. It refuses to overwrite a symlink or a file inside
+a git checkout. A fork can point it elsewhere with `PANOPTES_UPDATE_URL`.
 
 ### Pre-push review of your working branch
 
@@ -372,7 +380,9 @@ Run `./panoptes --help` for the full flag reference.
 ### Versioning
 
 Consumers pin `@v2`. Semantic tags (`v2.0.0`, `v2.1.0`, …) are cut per release
-and the floating `v2` tag moves to the latest compatible release. Breaking
+and the floating `v2` tag moves to the latest compatible release. Bump
+`PANOPTES_VERSION` in `bin/panoptes` to match each new tag — `--version` and
+`--self-update` report it. Breaking
 changes ship as a new major tag; existing consumers are unaffected until they
 opt in. (`v1` was the Claude-based engine.)
 

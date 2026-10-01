@@ -267,4 +267,23 @@ body_line=$(grep -n 'discount.js:2' "$COMMENT_OUT" | head -n1 | cut -d: -f1)
   || fail "footer: model line at $footer_line precedes review body at $body_line"
 echo "PASS  --show-model-footer renders below the review body"
 
+# Test 9 — --self-update swaps an installed copy for a newer one, reports
+# "up to date" when nothing changed, and refuses to touch a git checkout.
+UPD_DIR="$(mktemp -d)"
+cp "$PANOPTES" "$UPD_DIR/panoptes"
+sed 's/^PANOPTES_VERSION=.*/PANOPTES_VERSION="9.9.9"/' "$PANOPTES" > "$UPD_DIR/new"
+PANOPTES_UPDATE_URL="file://$UPD_DIR/new" "$UPD_DIR/panoptes" --self-update 2>/dev/null \
+  || { rm -rf "$UPD_DIR"; fail "self-update: exited non-zero"; }
+[ "$("$UPD_DIR/panoptes" --version)" = "panoptes 9.9.9" ] \
+  || { rm -rf "$UPD_DIR"; fail "self-update: copy was not replaced"; }
+PANOPTES_UPDATE_URL="file://$UPD_DIR/new" "$UPD_DIR/panoptes" --self-update 2>&1 | grep -q "already up to date" \
+  || { rm -rf "$UPD_DIR"; fail "self-update: second run should be a no-op"; }
+rm -rf "$UPD_DIR"
+set +e
+PANOPTES_UPDATE_URL="file:///nonexistent" "$PANOPTES" --self-update >/dev/null 2>&1
+code=$?
+set -e
+[ "$code" -eq 2 ] || fail "self-update: expected refusal (exit 2) inside a git checkout, got $code"
+echo "PASS  --self-update replaces an install, no-ops when current, refuses a checkout"
+
 echo "ALL SELFTESTS PASSED"
