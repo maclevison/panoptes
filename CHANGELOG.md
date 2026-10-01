@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v2.15.0 — 2026-10-01
 
 - **`panoptes --version` and `panoptes --self-update`.** A standalone install
   (a copy on your PATH, not a clone) can now update itself to the latest `v2`
