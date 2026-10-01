@@ -124,12 +124,16 @@ TRANSPORT (default: HTTP against an OpenAI-compatible endpoint):
   --llm-cmd "CMD"            Instead of curl, run CMD via `sh -c`, piping the
                              system prompt + diff to its stdin and reading the
                              review from its stdout. Non-JSON stdout is taken
-                             as the review verbatim. JSON stdout is treated as
-                             an agent envelope: a `status` field that is not
+                             as the review verbatim. JSON stdout must be one
+                             object and is treated as an agent envelope: a `status` field that is not
                              SUCCESS is a transport failure (its `error` is
                              reported), otherwise the review is read from
-                             `.response // .content // .text` — JSON carrying
-                             none of those is a failure, never a review.
+                             the first non-empty string among `.response`,
+                             `.content`, `.text`, `.result` (a claude
+                             `type:"result"` envelope must also be
+                             subtype=success, is_error=false) — JSON
+                             carrying none of those is a failure, never a
+                             review.
 
 FALLBACK (tried once, only after the primary transport fails):
   --fallback-base-url URL
@@ -756,14 +760,20 @@ cmd_call() {
     return 1
   fi
 
-  local trimmed first_char extracted status
-  trimmed="$(printf '%s' "$output" | sed -e 's/^[[:space:]]*//')"
-  first_char="${trimmed:0:1}"
-  if [ "$first_char" != "{" ] || ! printf '%s' "$output" | jq -e . >/dev/null 2>&1; then
-    # Not a JSON envelope (or only looks like one): the raw stdout is the review.
+  local extracted
+  if ! printf '%s' "$output" | jq empty >/dev/null 2>&1; then
+    # Not JSON: the raw stdout is the review.
     LAST_REVIEW="$output"
     LAST_PTOK="?"; LAST_CTOK="?"; LAST_TTOK="?"; LAST_COST=""; LAST_FINISH="n/a"
     return 0
+  fi
+  # JSON that is not exactly one object (an array, a scalar, a stream of
+  # values) is no envelope we understand — and never a review: an array can
+  # wrap an error object just as well.
+  if ! printf '%s' "$output" | jq -se 'length == 1 and (.[0] | type) == "object"' >/dev/null 2>&1; then
+    CMD_FAIL_CATEGORY="envelope_unknown"
+    CMD_FAIL_REASON="JSON output that is not a single object: $(cmd_output_tail "$output")"
+    return 1
   fi
 
   # A JSON envelope. Agent CLIs report failure INSIDE it — `agy --output-format
@@ -771,18 +781,31 @@ cmd_call() {
   # exits 0 — so the status field, not the exit code, is what says whether a
   # review happened. Treating a non-SUCCESS envelope as text would post the
   # error blob itself as a clean review.
-  status="$(printf '%s' "$output" | jq -r '.status // empty' 2>/dev/null)" || status=""
-  if [ -n "$status" ] && [ "$status" != "SUCCESS" ] && [ "$status" != "success" ]; then
+  # has(), not `.status // empty`: jq's // treats false as absent, so
+  # status:false (or null, or "") must not slip past as "no status field".
+  if printf '%s' "$output" | jq -e 'has("status") and .status != "SUCCESS" and .status != "success"' >/dev/null 2>&1; then
     CMD_FAIL_CATEGORY="envelope_error"
-    CMD_FAIL_REASON="command reported status=${status}: $(printf '%s' "$output" | jq -r '.error // "no error field"' 2>/dev/null)"
+    CMD_FAIL_REASON="command reported status=$(printf '%s' "$output" | jq -c '.status'): $(printf '%s' "$output" | jq -r '.error // "no error field"' 2>/dev/null)"
     return 1
   fi
-  extracted="$(printf '%s' "$output" | jq -r '.response // .content // .text // empty' 2>/dev/null)" || extracted=""
+  # `claude -p --output-format json` envelope ({"type":"result",...}): only
+  # subtype=success with is_error=false is a review. Error subtypes such as
+  # error_max_turns can arrive with is_error=false, so both are checked — and
+  # any one of the three markers is enough to apply the check.
+  if printf '%s' "$output" | jq -e '(.type == "result" or has("is_error") or has("subtype")) and (.subtype != "success" or .is_error != false)' >/dev/null 2>&1; then
+    CMD_FAIL_CATEGORY="envelope_error"
+    CMD_FAIL_REASON="command reported $(printf '%s' "$output" | jq -r '"subtype=\(if has("subtype") then .subtype | tostring else "missing" end) is_error=\(if has("is_error") then .is_error | tostring else "missing" end): \(if (.result | type) == "string" then .result else "no result text" end)"' 2>/dev/null)"
+    return 1
+  fi
+  # Only a non-empty string is a review: `jq -r` would happily serialize an
+  # object or array in one of these fields into "review" text. .result counts
+  # only inside a claude success envelope (the gate above vouched for it).
+  extracted="$(printf '%s' "$output" | jq -r 'first(.response, .content, .text, (select(.subtype == "success" and .is_error == false) | .result) | select(type == "string" and length > 0)) // empty' 2>/dev/null)" || extracted=""
   if [ -z "$extracted" ]; then
     # Valid JSON, no field we recognize as the review. Falling back to the raw
     # envelope here is what let an error blob through as `reviewed: true`.
     CMD_FAIL_CATEGORY="envelope_unknown"
-    CMD_FAIL_REASON="JSON output with no .response/.content/.text field: $(cmd_output_tail "$output")"
+    CMD_FAIL_REASON="JSON output with no non-empty string .response/.content/.text/.result field: $(cmd_output_tail "$output")"
     return 1
   fi
   LAST_REVIEW="$extracted"
